@@ -10,9 +10,12 @@
 
 package org.junit.jupiter.engine;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectUniqueId;
 import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
 
@@ -21,6 +24,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.engine.NestedTestClassesTests.OuterClass.NestedClass;
+import org.junit.jupiter.engine.NestedTestClassesTests.OuterClass.NestedClass.RecursiveNestedClass;
+import org.junit.jupiter.engine.NestedTestClassesTests.OuterClass.NestedClass.RecursiveNestedSiblingClass;
+import org.junit.platform.commons.JUnitException;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.testkit.engine.EngineExecutionResults;
@@ -132,6 +139,47 @@ class NestedTestClassesTests extends AbstractJupiterTestEngineTests {
 
 		assertEquals(8, containers.started().count(), "# containers started");
 		assertEquals(8, containers.finished().count(), "# containers finished");
+	}
+
+	/**
+	 * @since 1.6
+	 */
+	@Test
+	void recursiveNestedTestClassHierarchiesAreNotExecuted() {
+		assertNestedCycle(OuterClass.class, RecursiveNestedClass.class, OuterClass.class);
+		assertNestedCycle(NestedClass.class, RecursiveNestedClass.class, OuterClass.class);
+		assertNestedCycle(RecursiveNestedClass.class, RecursiveNestedClass.class, OuterClass.class);
+	}
+
+	/**
+	 * @since 1.6
+	 */
+	@Test
+	void individualMethodsWithinRecursiveNestedTestClassHierarchiesAreExecuted() {
+		EngineExecutionResults executionResults = executeTests(selectMethod(OuterClass.class, "outer"));
+		executionResults.containerEvents().assertStatistics(stats -> stats.started(2).succeeded(2));
+		executionResults.testEvents().assertStatistics(stats -> stats.started(1).succeeded(1));
+
+		executionResults = executeTests(selectMethod(NestedClass.class, "nested"));
+		executionResults.containerEvents().assertStatistics(stats -> stats.started(3).succeeded(3));
+		executionResults.testEvents().assertStatistics(stats -> stats.started(1).succeeded(1));
+
+		executionResults = executeTests(selectMethod(RecursiveNestedClass.class, "nested"));
+		executionResults.containerEvents().assertStatistics(stats -> stats.started(4).succeeded(4));
+		executionResults.testEvents().assertStatistics(stats -> stats.started(1).succeeded(1));
+
+		executionResults = executeTests(selectMethod(RecursiveNestedSiblingClass.class, "nested"));
+		executionResults.containerEvents().assertStatistics(stats -> stats.started(4).succeeded(4));
+		executionResults.testEvents().assertStatistics(stats -> stats.started(1).succeeded(1));
+	}
+
+	private void assertNestedCycle(Class<?> start, Class<?> from, Class<?> to) {
+		assertThatExceptionOfType(JUnitException.class)//
+				.isThrownBy(() -> executeTestsForClass(start))//
+				.withCauseExactlyInstanceOf(JUnitException.class)//
+				.satisfies(ex -> assertThat(ex.getCause()).hasMessageMatching(
+					String.format("Detected cycle in inner class hierarchy between .+%s and .+%s", from.getSimpleName(),
+						to.getSimpleName())));
 	}
 
 	// -------------------------------------------------------------------
@@ -280,7 +328,6 @@ class NestedTestClassesTests extends AbstractJupiterTestEngineTests {
 	static class AbstractOuterClass {
 	}
 
-	// TODO Add @Test methods to assert the expected behavior in Jupiter.
 	static class OuterClass extends AbstractOuterClass {
 
 		@Test

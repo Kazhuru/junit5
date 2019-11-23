@@ -1037,10 +1037,15 @@ public final class ReflectionUtils {
 
 	/**
 	 * Detect a cycle in the inner class hierarchy in which the supplied class
-	 * resides &mdash; from the supplied class to the outermost enclosing class
+	 * resides &mdash; from the supplied class up to the outermost enclosing class
 	 * &mdash; and throw a {@link JUnitException} if a cycle is detected.
+	 *
+	 * <p>This method does <strong>not</strong> detect cycles within inner class
+	 * hierarchies <em>below</em> the supplied class.
+	 *
 	 * <p>If the supplied class is not an inner class and does not have a
 	 * searchable superclass, this method is effectively a no-op.
+	 *
 	 * @since 1.6
 	 * @see #isInnerClass(Class)
 	 * @see #isSearchable(Class)
