@@ -260,6 +260,71 @@ tasks {
 		}
 	}
 
+	val generateJupiterApiJavadocs by registering(Javadoc::class) {
+		dependsOn(project(":junit-jupiter-api").tasks.jar)
+		group = "Documentation"
+		description = "Generates Jupiter API Javadocs"
+
+		title = "JUnit Jupiter $version API"
+
+		val stylesheetFooterFile = rootProject.file("src/javadoc/stylesheet-footer.css")
+		inputs.file(stylesheetFooterFile)
+
+		options {
+			memberLevel = JavadocMemberLevel.PROTECTED
+			header = rootProject.description
+			encoding = "UTF-8"
+			(this as StandardJavadocDocletOptions).apply {
+				splitIndex(true)
+				addBooleanOption("Xdoclint:none", true)
+				addBooleanOption("html5", true)
+				// Javadoc 13 removed support for `--no-module-directories`
+				// https://bugs.openjdk.java.net/browse/JDK-8215580
+				val javaVersion = JavaVersion.current()
+				if (javaVersion.isJava12 && executable == null) {
+					addBooleanOption("-no-module-directories", true)
+				}
+				addMultilineStringsOption("tag").value = listOf(
+						"apiNote:a:API Note:",
+						"implNote:a:Implementation Note:"
+				)
+				jFlags("-Xmx1g")
+				source("8") // https://github.com/junit-team/junit5/issues/1735
+				links("https://docs.oracle.com/javase/8/docs/api/")
+				links("https://ota4j-team.github.io/opentest4j/docs/$ota4jDocVersion/api/")
+				links("https://apiguardian-team.github.io/apiguardian/docs/$apiGuardianDocVersion/api/")
+				links("https://junit.org/junit4/javadoc/${Versions.junit4}/")
+				links("https://joel-costigliola.github.io/assertj/core-8/api/")
+				use(true)
+				noTimestamp(true)
+			}
+		}
+		source(project(":junit-jupiter-api").sourceSets.main.get().allJava)
+
+		setMaxMemory("1024m")
+		setDestinationDir(file("$buildDir/docs/jupiterjavadoc"))
+
+		classpath = files(project(":junit-jupiter-api").sourceSets.main.get().compileClasspath)
+				// Remove Kotlin classes from classpath due to "bad" class file
+				// see https://bugs.openjdk.java.net/browse/JDK-8187422
+				.filter { !it.path.contains("kotlin") }
+				// Remove subproject JARs so Kotlin classes don"t get picked up
+				.filter { it.isDirectory || !it.absolutePath.startsWith(projectDir.absolutePath) }
+
+		doLast {
+			val javadocStylesheet = File(destinationDir, "stylesheet.css")
+			javadocStylesheet.appendBytes(stylesheetFooterFile.readBytes())
+		}
+		doLast {
+			// For compatibility with pre JDK 10 versions of the Javadoc tool
+			copy {
+				from(File(destinationDir, "element-list"))
+				into("$destinationDir")
+				rename { "package-list" }
+			}
+		}
+	}
+
 	val prepareDocsForUploadToGhPages by registering(Copy::class) {
 		dependsOn(aggregateJavadocs, asciidoctor)
 		outputs.dir(docsDir)
