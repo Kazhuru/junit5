@@ -13,6 +13,9 @@ package org.junit.jupiter.api;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.util.ClassUtils;
@@ -141,4 +144,42 @@ public interface DisplayNameGenerator {
 		}
 	}
 
+	/**
+	 * {@code DisplayNameGenerator} that replaces CamelCase names with spaces.
+	 *
+	 * <p>This generator extends the functionality of {@link Standard} by
+	 * adding adding white space ({@code ' '}) to all uppercase letters.
+	 */
+	class ReplaceCamelCase extends Standard {
+
+		@Override
+		public String generateDisplayNameForClass(Class<?> testClass) {
+			return replaceCamelCase(testClass.getSimpleName());
+		}
+
+		@Override
+		public String generateDisplayNameForNestedClass(Class<?> nestedClass) {
+			return replaceCamelCase(super.generateDisplayNameForNestedClass(nestedClass));
+		}
+
+		@Override
+		public String generateDisplayNameForMethod(Class<?> testClass, Method testMethod) {
+			return replaceCamelCase(testMethod.getName());
+		}
+
+		private static String replaceCamelCase(String name) {
+			List<Character> stringToList = new ArrayList<>();
+			for (char character : name.toCharArray())
+				stringToList.add(character);
+
+			for (int index = 0; index < stringToList.size(); index++)
+				if (index > 0 && (Character.isUpperCase(stringToList.get(index))
+						|| Character.isDigit(stringToList.get(index)))) {
+					stringToList.add(index, ' ');
+					index++;
+				}
+
+			return stringToList.stream().map(Object::toString).collect(Collectors.joining());
+		}
+	}
 }

@@ -97,6 +97,16 @@ class DisplayNameGenerationTests extends AbstractJupiterTestEngineTests {
 		));
 	}
 
+	@Test
+	void checkDisplayNameGeneratedForTestingAStackDemoWithCamelCase() {
+		check(StackTestCaseWithCamelCase.class, List.of( //
+			"CONTAINER: A New Stack", //
+			"CONTAINER: A stack", //
+			"TEST: is Empty 1 2 3", //
+			"TEST: is Instantiated Using Its Noarg Constructor" //
+		));
+	}
+
 	private void check(Class<?> testClass, List<String> expectedDisplayNames) {
 		var request = request().selectors(selectClass(testClass)).build();
 		var descriptors = discoverTests(request).getDescendants();
@@ -240,6 +250,34 @@ class DisplayNameGenerationTests extends AbstractJupiterTestEngineTests {
 					assertEquals(anElement, stack.peek());
 					assertFalse(stack.isEmpty());
 				}
+			}
+		}
+	}
+
+	// -------------------------------------------------------------------
+
+	@DisplayName("A stack")
+	@DisplayNameGeneration(DisplayNameGenerator.ReplaceCamelCase.class)
+	static class StackTestCaseWithCamelCase {
+
+		Stack<Object> stack;
+
+		@Test
+		void isInstantiatedUsingItsNoargConstructor() {
+			new Stack<>();
+		}
+
+		@Nested
+		class ANewStack {
+
+			@BeforeEach
+			void createNewStack() {
+				stack = new Stack<>();
+			}
+
+			@Test
+			void isEmpty123() {
+				assertTrue(stack.isEmpty());
 			}
 		}
 	}

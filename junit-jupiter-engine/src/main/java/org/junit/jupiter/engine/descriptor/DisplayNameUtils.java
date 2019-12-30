@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.DisplayNameGenerator.ReplaceCamelCase;
 import org.junit.jupiter.api.DisplayNameGenerator.ReplaceUnderscores;
 import org.junit.jupiter.api.DisplayNameGenerator.Standard;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
@@ -50,6 +51,11 @@ final class DisplayNameUtils {
 	 * Pre-defined display name generator instance replacing underscores.
 	 */
 	private static final DisplayNameGenerator replaceUnderscoresGenerator = new ReplaceUnderscores();
+
+	/**
+	 * Pre-defined display name generator instance replacing camelcase.
+	 */
+	private static final DisplayNameGenerator replaceCamelCaseGenerator = new ReplaceCamelCase();
 
 	static String determineDisplayName(AnnotatedElement element, Supplier<String> displayNameSupplier) {
 		Preconditions.notNull(element, "Annotated element must not be null");
@@ -99,6 +105,10 @@ final class DisplayNameUtils {
 					if (displayNameGeneratorClass == ReplaceUnderscores.class) {
 						return replaceUnderscoresGenerator;
 					}
+					if (displayNameGeneratorClass == ReplaceCamelCase.class) {
+						return replaceCamelCaseGenerator;
+					}
+
 					return ReflectionUtils.newInstance(displayNameGeneratorClass);
 				}) //
 				.orElseGet(configuration::getDefaultDisplayNameGenerator);
